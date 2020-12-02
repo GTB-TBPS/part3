@@ -1,5 +1,5 @@
 # part3
-This is a Stata do-file for the ananlysis using robust standard errors with Multiple Imputation and Inverse Probability Weighting (model 3)
+This is a Stata do-file for the ananlysis using robust standard errors with Multiple Imputation and Inverse Probability Weighting (Model 3)
 
 For more details, read:
 
