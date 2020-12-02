@@ -1,5 +1,10 @@
 # part3
-This is a Stata do-file to do the Model 3 - Robust standard errors with multiple imputation
+This is a Stata do-file for the ananlysis using robust standard errors with Multiple Imputation and Inverse Probability Weighting (model 3)
+
+For more details, read:
+
+Analysis of tuberculosis prevalence surveys: new guidance on best-practice methods
+https://ete-online.biomedcentral.com/articles/10.1186/1742-7622-10-10
 
 * First created: 10 November 2013
 * Authors: B. Sismanidis & S. Floyd
