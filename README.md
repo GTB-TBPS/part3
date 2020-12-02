@@ -4,6 +4,7 @@ This is a Stata do-file for the ananlysis using robust standard errors with Mult
 For more details, read:
 
 Analysis of tuberculosis prevalence surveys: new guidance on best-practice methods
+
 https://ete-online.biomedcentral.com/articles/10.1186/1742-7622-10-10
 
 * First created: 10 November 2013
