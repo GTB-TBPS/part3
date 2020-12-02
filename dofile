@@ -1,14 +1,12 @@
 * REQUIRED DATASETS SHOULD BE NAMED AS FOLLOWS
 
 /*
-enumerated.dta - 	The dataset with all enumerated individuals from the census.
-					This dataset is used for the sole purpose of constructing population pyramids.
-eligible.dta -		The dataset with individuals eligible to participate in the survey (based on age and residency status) 
-					This dataset is a subset of enumerated.dta (keep if elig_part==1)
-participants.dta -	This dataset contains all eligible individuals who actually participated in cluster operations 
-					This dataset is a subset of enumerated.dta(keep if part==1)
-analysis.dta -		The dataset with all eligible individuals who actually participated in cluster operations AND their outcomes 		
+enumerated.dta - The dataset with all enumerated individuals from the census. This dataset is used for the sole purpose of constructing population pyramids.
+eligible.dta - The dataset with individuals eligible to participate in the survey (based on age and residency status). This dataset is a subset of enumerated.dta (keep if elig_part==1)
+participants.dta - This dataset contains all eligible individuals who actually participated in cluster operations. This dataset is a subset of enumerated.dta(keep if part==1)
+analysis.dta - The dataset with all eligible individuals who actually participated in cluster operations AND their outcomes 		
 */
+
 ***********************
 
 * Change working directory
@@ -20,7 +18,7 @@ set more off, permanently
 cd "C:\Users\................"
 
 **********************************
-*** STEP I. CREATE THE WEIGHTS ***
+*** STEP Ia. CREATE THE WEIGHTS ***
 **********************************
 
 /* Count the number of eligible individuals in the strata defined by cluster, age group and sex */
@@ -71,3 +69,52 @@ sort cluster agegroup sex
 drop if weight==.
 
 save weights.dta, replace
+
+************************************************
+**** STEP Ib. CREATE THE POST-STRATA WEIGHTS ***
+************************************************
+
+*Now create weights for the post-strata adjustment because the population of the survey census could be different from the national census
+
+* the "projected" population file has it broken down by strata, age group and sex
+* these numbers were manually created in an Excel file from Lesotho Bureau of Statistics
+* file name is projected_strata.dta
+* analysis is based on this: https://stats.idre.ucla.edu/stata/faq/how-do-i-analyze-survey-data-with-poststratification/
+
+
+************************************************
+*** STEP II. CREATE THE NON-SUSPECTS DATASET ***
+************************************************
+
+* Start by creating a dataset with only "non-suspects"
+use analysis.dta, clear
+
+* Participants NOT eligible for sputum exam
+tab elig_sputum,m
+
+keep if elig_sputum>4
+
+sort pin
+tab elig_sputum, m
+save participants_not_suspects.dta, replace
+
+********************************************************************
+*** STEP III. CREATE THE PARTICIPANTS BUT NOT "SUSPECTS" DATASET ***
+********************************************************************
+
+* Now create 25 copies of the non-suspects in order to append these later with the imputed "suspect" population
+
+set more off
+use participants_not_suspects, clear
+gen _mj=0
+forvalues i=1/25 {
+ append using participants_not_suspects
+ replace _mj=`i' if _mj==.
+}
+tab _mj
+sort _mj pin
+save imp_participants_not_suspects.dta, replace
+clear
+
+
+TO BE CONTINUED
