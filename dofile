@@ -1,0 +1,73 @@
+* REQUIRED DATASETS SHOULD BE NAMED AS FOLLOWS
+
+/*
+enumerated.dta - 	The dataset with all enumerated individuals from the census.
+					This dataset is used for the sole purpose of constructing population pyramids.
+eligible.dta -		The dataset with individuals eligible to participate in the survey (based on age and residency status) 
+					This dataset is a subset of enumerated.dta (keep if elig_part==1)
+participants.dta -	This dataset contains all eligible individuals who actually participated in cluster operations 
+					This dataset is a subset of enumerated.dta(keep if part==1)
+analysis.dta -		The dataset with all eligible individuals who actually participated in cluster operations AND their outcomes 		
+*/
+***********************
+
+* Change working directory
+
+clear all
+set more off, permanently
+
+/* edit directory */
+cd "C:\Users\................"
+
+**********************************
+*** STEP I. CREATE THE WEIGHTS ***
+**********************************
+
+/* Count the number of eligible individuals in the strata defined by cluster, age group and sex */
+use eligible, clear
+
+gen n=1
+keep cluster agegroup sex n
+collapse (sum) n, by(cluster agegroup sex)
+sort cluster agegroup sex
+rename n total_pop
+desc
+save total_eligible.dta, replace
+
+/* Count the number of participants in the strata defined by cluster, age group and sex */
+use participants, clear
+
+gen n=1
+keep cluster agegroup sex n
+collapse (sum) n, by(cluster agegroup sex)
+sort cluster agegroup sex
+rename n total_participants
+desc
+save total_participants.dta, replace
+
+/* Merge the two to generate weights */
+use total_eligible.dta, clear
+merge 1:1 cluster agegroup sex using total_participants
+drop _merge
+/*no eligible have participated, since this is only true when total_participants==.  n=XXX*/
+count if total_participants>total_pop 
+
+/*all eligible have participated, n=XXX*/
+count if total_participants==total_pop 
+
+/*some eligible have participated, n=XXX*/
+count if total_participants<total_pop 
+
+sort cluster agegroup sex
+/*higher weight for lower participation*/
+gen weight=total_pop/total_participants 
+summ weight, det
+list if weight>2.2, noobs
+label var weight "Weight = Neligible / Nparticipant"
+histogram weight, percent start(1) width(0.05)
+sort cluster agegroup sex
+
+***This drops cluster/age/sex groupings if there are no participants in specific age/sex groupings
+drop if weight==.
+
+save weights.dta, replace
