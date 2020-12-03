@@ -1,6 +1,10 @@
-* REQUIRED DATASETS SHOULD BE NAMED AS FOLLOWS
+*Run part 1 before runnning part 3
+
+*This is an example do-file that was used for the Lesotho survey
 
 /*
+FOUR REQUIRED DATASETS SHOULD BE NAMED AS FOLLOWS
+
 enumerated.dta - The dataset with all enumerated individuals from the census. This dataset is used for the sole purpose of constructing population pyramids.
 eligible.dta - The dataset with individuals eligible to participate in the survey (based on age and residency status). This dataset is a subset of enumerated.dta (keep if elig_part==1)
 participants.dta - This dataset contains all eligible individuals who actually participated in cluster operations. This dataset is a subset of enumerated.dta(keep if part==1)
@@ -18,7 +22,7 @@ set more off, permanently
 cd "C:\Users\................"
 
 **********************************
-*** STEP Ia. CREATE THE WEIGHTS ***
+*** STEP 1a. CREATE THE WEIGHTS ***
 **********************************
 
 /* Count the number of eligible individuals in the strata defined by cluster, age group and sex */
@@ -71,19 +75,62 @@ drop if weight==.
 save weights.dta, replace
 
 ************************************************
-**** STEP Ib. CREATE THE POST-STRATA WEIGHTS ***
+**** STEP 1b. CREATE THE POST-STRATA WEIGHTS ***
 ************************************************
 
 *Now create weights for the post-strata adjustment because the population of the survey census could be different from the national census
 
-* the "projected" population file has it broken down by strata, age group and sex
-* these numbers were manually created in an Excel file from Lesotho Bureau of Statistics
-* file name is projected_strata.dta
+* the "projected" population file is broken down by strata, age group and sex and obtained from the relevant Bureau of Statistics
+* ane example dataset is shown below
+* the newly created Stata file name is projected_strata.dta
 * analysis is based on this: https://stats.idre.ucla.edu/stata/faq/how-do-i-analyze-survey-data-with-poststratification/
 
+/*
+Example dataset
+
+input agegroup	sex	strata	projected	cat1	cat
+4	1	1	65323	um	um4
+5	1	1	68448	um	um5
+6	1	1	45879	um	um6
+7	1	1	24540	um	um7
+8	1	1	13794	um	um8
+9	1	1	9096	um	um9
+4	0	1	78468	uf	uf4
+5	0	1	76661	uf	uf5
+6	0	1	46494	uf	uf6
+7	0	1	27929	uf	uf7
+8	0	1	17919	uf	uf8
+9	0	1	16405	uf	uf9
+4	1	2	122463	rm	rm4
+5	1	2	101119	rm	rm5
+6	1	2	62670	rm	rm6
+7	1	2	38418	rm	rm7
+8	1	2	29094	rm	rm8
+9	1	2	31580	rm	rm9
+4	0	2	108542	rf	rf4
+5	0	2	85022	rf	rf5
+6	0	2	55361	rf	rf6
+7	0	2	43136	rf	rf7
+8	0	2	39582	rf	rf8
+9	0	2	50521	rf	rf9
+4	1	3	17197	pum	pum4
+5	1	3	13150	pum	pum5
+6	1	3	8334	pum	pum6
+7	1	3	5223	pum	pum7
+8	1	3	3627	pum	pum8
+9	1	3	3363	pum	pum9
+4	0	3	16981	puf	puf4
+5	0	3	12601	puf	puf5
+6	0	3	7863	puf	puf6
+7	0	3	5945	puf	puf7
+8	0	3	4984	puf	puf8
+9	0	3	6239	puf	puf9
+
+end
+*/
 
 ************************************************
-*** STEP II. CREATE THE NON-SUSPECTS DATASET ***
+*** STEP 2. CREATE THE NON-SUSPECTS DATASET ***
 ************************************************
 
 * Start by creating a dataset with only "non-suspects"
@@ -99,7 +146,7 @@ tab elig_sputum, m
 save participants_not_suspects.dta, replace
 
 ********************************************************************
-*** STEP III. CREATE THE PARTICIPANTS BUT NOT "SUSPECTS" DATASET ***
+*** STEP 3. CREATE THE PARTICIPANTS BUT NOT "SUSPECTS" DATASET ***
 ********************************************************************
 
 * Now create 25 copies of the non-suspects in order to append these later with the imputed "suspect" population
@@ -116,5 +163,305 @@ sort _mj pin
 save imp_participants_not_suspects.dta, replace
 clear
 
+*************************
+* STEP 4. LOAD THE DATA *
+*************************
 
-TO BE CONTINUED
+* Now re-read the original dataset in order to do the imputations among eligible for sputum examination
+use analysis.dta, clear
+tab bact,m
+
+*Only keep the "suspects" = eligible for sputum examination and perform imputation for those
+keep if elig_sputum<5 /*For robust SEs with MI + IPW*/
+
+tab elig_sputum, m
+tab bact,m
+
+* Investigate missing data patterns (these are variables used in the Lesotho survey)
+misstable patterns bact agegroup sex strata hivcombined pasttb currenttb cough body_weight fever sweat cxr1 cxr2 if elig_sputum!=5, freq
+/*
+
+          Missing-value patterns
+            (1 means complete)
+
+              |   Pattern
+    Frequency |  1  2  3  4    5  6  7  8
+  ------------+---------------------------
+        4,327 |  1  1  1  1    1  1  1  1
+              |
+        1,664 |  1  1  1  1    1  1  1  0
+          365 |  1  1  1  1    1  1  0  1
+          294 |  1  1  1  1    1  1  0  0
+          273 |  1  1  1  1    0  1  1  0
+          202 |  1  1  1  1    1  0  1  1
+          187 |  1  1  1  1    1  0  1  0
+           82 |  1  1  1  1    1  0  0  0
+           82 |  1  1  1  1    1  0  0  1
+           72 |  1  1  1  1    0  0  1  0
+           16 |  1  1  1  1    0  0  0  0
+           13 |  1  1  1  1    0  1  0  0
+            2 |  1  1  0  1    1  1  1  1
+            1 |  0  0  0  0    0  0  1  0
+            1 |  0  0  0  0    1  1  0  1
+            1 |  1  0  0  0    1  1  0  0
+            1 |  1  1  1  0    1  0  1  1
+            1 |  1  1  1  0    1  1  1  0
+  ------------+---------------------------
+        7,584 |
+
+  Variables are  (1) cough  (2) sweat  (3) body_weight  (4) fever  (5) cxr1  (6) bact  (7) hivcombined  (8) cxr2
+
+*/
+
+******************************************************************************************
+* STEP II. ESTABLISH WHICH OF THE POTENTIAL PREDICTORS TO ADD INTO THE IMPUTATION MODEL *
+* Much of this was established in the previous do-files 
+******************************************************************************************
+
+* With typically large sample sizes involved most associations will be "significant", it is hence also important
+* to quantify associations with OR's to also establish their importance
+
+logistic bact i.agegroup          	/*chi-square=, p=       */
+logistic bact sex  					           /*chi-square=, p=       */
+logistic bact i.strata   			       /*chi-square=, p=       */
+
+
+logistic bact currenttb   		        /*chi-square=, p=      */
+logistic bact pasttb   		      	    /*chi-square=, p=      */
+logistic bact i.elig_sputum_central /*chi-square=, p=      */
+logistic bact i.elig_sputum   	     /*chi-square=, p=      */
+logistic bact hivcombined  			      /*chi-square=, p=      */
+
+logistic bact cough		   		         /*chi-square=, p=       */
+logistic bact fever		 			          /*chi-square=, p=       */
+logistic bact body_weight	  		     /*chi-square=, p=       */
+logistic bact sweat 			           	/*chi-square=, p=       */
+
+logistic bact cxr1
+logistic bact cxr2 
+
+*Check for interaction between age and sex
+xi:logistic bact i.agegroup*sex
+est store a
+xi: logistic bact i.agegroup sex
+est store b
+lrtest a b /* interaction terms are not significant */
+
+*Backwards step-wise: at 5% significance level, consider even 10% if need be:
+
+logistic bact agegroup sex strata currenttb pasttb cough fever body_weight sweat hivcombined cxr1 cxr2
+logistic bact agegroup sex strata currenttb pasttb cough fever body_weight hivcombined cxr1 cxr2
+logistic bact agegroup sex strata currenttb pasttb cough fever body_weight hivcombined cxr2
+logistic bact agegroup strata currenttb pasttb cough fever body_weight hivcombined cxr2
+logistic bact agegroup currenttb pasttb cough fever body_weight hivcombined cxr2
+logistic bact agegroup currenttb pasttb cough body_weight hivcombined cxr2
+logistic bact agegroup currenttb pasttb cough body_weight hivcombined cxr2
+logistic bact currenttb pasttb cough body_weight hivcombined cxr2
+logistic bact currenttb pasttb cough hivcombined cxr2
+
+*** For the final imputation model variables to include: bact agegroup sex strata pasttb cough  hivcombined currenttb cxr2
+
+*you may need to include more variables later
+keep cluster bact agegroup sex strata pasttb cough  hivcombined currenttb cxr2
+
+compress
+
+save mid2_bact.dta, replace
+
+
+*********************************************************************
+* STEP 5. CONTINUE BY LOOKING AT ASSOCIATIONS BETWEEN MISSINGNESS *
+**************** AND EACH OF THE POTENTIAL PREDICTORS****************
+*********************************************************************
+use mid2_bact.dta, clear
+
+gen missing=1 if bact==. 
+recode missing .=0 
+
+xi: logistic missing cluster bact agegroup sex strata pasttb cough  hivcombined currenttb cxr2
+
+* Additional predictors identified: none
+* BUT if OR's close to 1 (e.g. fever and night_sweats), will not add to imputation model so as not to introduce potential collinearity problems
+
+****************************************************************
+* STEP 6. USE THE ICE PROCEDURE TO IMPUTE LAB RESULTS **********
+****************************************************************
+
+***** BACTERIOLOGICALLY-CONFIRMED OUTCOME
+use mid2_bact.dta, clear
+
+* ALL: bact hivcombine pasttb cough strata sex agegroup , add(25) burnin(20)	
+mi set flong
+mi register imputed bact pasttb hivcombined cough currenttb cxr2
+mi register regular strata sex agegroup 
+
+*mi impute chained ///
+*(logit, augment) bact hiv_status_combine (mlogit, augment) hx_final	///
+*(mlogit, augment) elig_sputum_central ///
+*	= i.strata i.sex i.agegroup i.race, add(25) rseed(101) chaindots burnin(20) dryrun
+
+*V.1
+mi impute chained ///
+(logit, augment) bact hivcombined pasttb currenttb cxr2	///
+	= i.strata i.sex i.agegroup, add(25) rseed(101) burnin(20) chaindots report
+
+gen _mj=_mi_m
+gen _mi=_mi_id
+save model3_bact_20_v1, replace 
+
+*V.2
+mi impute chained ///
+(logit, augment) bact hivcombined pasttb currenttb cxr2	///
+	= i.strata i.sex i.agegroup, add(20) rseed(101) burnin(20) chaindots report
+
+gen _mj=_mi_m
+gen _mi=_mi_id
+save model3_bact_20_v2, replace
+
+*V.3
+mi impute chained ///
+(logit, augment) bact hivcombined ///
+	= i.strata i.sex i.agegroup, add(20) rseed(101) burnin(20) chaindots report
+
+gen _mj=_mi_m
+gen _mi=_mi_id
+save model3_bact_20_v3, replace
+
+*V.4
+mi impute chained ///
+(logit, augment) bact hivcombined cough pasttb currenttb cxr2 ///
+	= i.strata i.sex i.agegroup, add(10) rseed(101) burnin(20) chaindots report
+
+gen _mj=_mi_m
+gen _mi=_mi_id
+save model3_bact_20_v4, replace
+*/
+
+*V.5 USING THIS ONE FOR NOW
+mi impute chained ///
+(logit, augment) bact hivcombined cough  pasttb currenttb cxr2 ///
+	= i.strata i.sex i.agegroup, add(20) rseed(101) burnin(20) chaindots report
+
+gen _mj=_mi_m
+gen _mi=_mi_id
+save model3_bact_20_v5, replace
+
+
+**************************************************************
+* STEP 7. CONSTRUCT DATASETS FOR IPW/MI ANALYSIS ************
+**************************************************************
+
+**** BACT OUTCOME
+
+use model3_bact_20_v5, clear
+
+mi unset
+
+tab _mj
+bysort _mj: tab bact,m
+append using imp_participants_not_suspects
+tab _mj
+ drop if _mj>20
+bysort _mj: tab bact,m
+
+keep _mj _mi cluster bact agegroup sex strata hivcombine cough pasttb currenttb cxr2
+
+
+*******************************************************************************
+* STEP 8: OBTAIN TB PREVALENCE ESTIMATES **************************************
+*******************************************************************************
+
+*Merge the population weights eligible/participant
+sort cluster agegroup sex
+merge m:1 cluster agegroup sex using weights
+drop _merge
+
+*Merge the second weight i.e. adjust for enumerated population with the census population
+
+merge m:1 agegroup sex strata using projected_strata
+drop _merge
+
+
+*******************************
+* BACTERIOLOGICALLY CONFIRMED *
+*******************************
+
+* Now combine with weights to get from participants eligible for inclusion in the survey
+svyset cluster [pw=weight]
+
+* TRY WTH POSTSTRATA WEIGHTS TO ADJUST ENUMERATED WITH THE CENSUS POPULATION (created in step 1b)
+svyset, clear
+svyset cluster [pw = weight], poststrata(cat) postweight(projected)
+
+* OVERALL PREVALENCE RATE
+xi:mim, category(fit) storebv: svy: logit bact
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) /* XXX(XXX-XXX) */
+
+* STRATUM-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv: svy: logit bact i.strata
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 								                      /*Strata 1 	XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2])) /*Strata 2 	XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3])) /*Strata 3 	XXX(XXX-XXX) */
+
+/*
+***WEIGHT BY POPULATION SIZE IN EACH STRATUM. Edit the numbers to represent the proportion of each strata
+
+***AS SAMPLE OBTAINED WAS 37.89% (S1), 57.51% (S2), 4.60% (S3) in the three STRATA of those that participated
+***AS SAMPLE OBTAINED WAS 36.02% (S1), 58.76% (S2), 5.21% (S3) in the three STRATA of those that enumerated
+***AS SAMPLE OBTAINED WAS 34.45% (S1), 58.41% (S2), 7.13% (S3) in the three STRATA of those that imputed dataset
+
+****I.E.  IS IT CLOSE TO ACTUAL RELATIVE POPULATION SIZE IN EACH STRATA?
+tab strata, m
+
+nlcom (0.3789*exp(_b[_cons])/(1+exp(_b[_cons]))) ///
++(0.5751*exp  (_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2])) ///
++(0.0460*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3]))))
+
+nlcom (0.3602*exp(_b[_cons])/(1+exp(_b[_cons]))) ///
++(0.5841*exp  (_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2])) ///
++(0.0521*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3]))))
+
+nlcom (0.3445*exp(_b[_cons])/(1+exp(_b[_cons]))) ///
++(0.5841*exp  (_b[_cons]+_b[_Istrata_2])/(1+exp(_b[_cons]+_b[_Istrata_2])) ///
++(0.0713*exp(_b[_cons]+_b[_Istrata_3])/(1+exp(_b[_cons]+_b[_Istrata_3]))))
+*/
+
+* SEX-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv: svy: logit bact i.sex
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 									                  /* Female  XXX(XXX-XXX)  */
+nlcom 100000*exp(_b[_cons]+_b[_Isex_1])/(1+exp(_b[_cons]+_b[_Isex_1]))  		/* Male    XXX(XXX-XXX)  */
+ 
+* HIV-SPECIFIC PREVALENCE RATE
+rename hivcombined hiv
+xi: mim, category(fit) storebv: svy: logit bact i.hiv
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons]))			                        /* HIV-negative XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Ihiv_1])/(1+exp(_b[_cons]+_b[_Ihiv_1]))   /* HIV-positive XXX(XXX-XXX) */
+
+* AGE-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv: svy: logit bact i.agegroup
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 									                         /*15-24yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_5])/(1+exp(_b[_cons]+_b[_Iagegroup_5])) /*25-34yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_6])/(1+exp(_b[_cons]+_b[_Iagegroup_6])) /*35-44yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_7])/(1+exp(_b[_cons]+_b[_Iagegroup_7])) /*45-54yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_8])/(1+exp(_b[_cons]+_b[_Iagegroup_8])) /*55-64yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_9])/(1+exp(_b[_cons]+_b[_Iagegroup_9])) /*65+ yrs  XXX(XXX-XXX) */
+ 
+preserve
+
+*recode to get different agegroups
+
+*EDIT AGE GROUPS from 6 to 3
+recode agegroup (4=1) (5=1)(6=2)(7=2)(8=3)(9=3), gen (agegroup3)
+label define agegroup_label2 1 "15-34" 2 "35-54" 3 "55+" 
+label values agegroup3 agegroup_label2
+drop agegroup
+rename agegroup3 agegroup
+tab agegroup,m 
+ 
+* AGE-SPECIFIC PREVALENCE RATE
+xi: mim, category(fit) storebv: svy: logit bact i.agegroup
+nlcom 100000*exp(_b[_cons])/(1+exp(_b[_cons])) 									                         /*15-34yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_2])/(1+exp(_b[_cons]+_b[_Iagegroup_2])) /*35-54yrs XXX(XXX-XXX) */
+nlcom 100000*exp(_b[_cons]+_b[_Iagegroup_3])/(1+exp(_b[_cons]+_b[_Iagegroup_3])) /*55+yrs XXX(XXX-XXX) */
+  
+restore
