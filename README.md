@@ -1,5 +1,5 @@
 # part3
-This is a Stata do-file for the analysis using robust standard errors with Multiple Imputation and Inverse Probability Weighting (Model 3). The primary outcomes is the estimated prevalence of bacteriologically confirmed pulmonary TB.
+This is a Stata do-file for the analysis using robust standard errors with Multiple Imputation and Inverse Probability Weighting (Model 3). The primary outcome is the estimated prevalence of bacteriologically confirmed pulmonary TB.
 
 For more details, read:
 
